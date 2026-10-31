@@ -5,8 +5,7 @@ telemetry, detects incidents over a rolling window, runs the **AiSOC sandbox**
 to produce an investigation ledger per incident, and **executes containment**
 against the gateway's control-plane API under a blast-radius policy gate.
 
-This is the always-on version of the bench's `ship.sh → adapt.py →
-aisoc-sandbox --file`.
+It replaces after-the-fact, batch analysis with an always-on loop.
 
 ## How it runs (local kind)
 
@@ -17,7 +16,7 @@ aisoc-sandbox --file`.
                         gateway control API (revoke/tighten) ◀──┘
 ```
 
-1. **Tail the gateway telemetry into the feed** (the live `ship.sh`):
+1. **Tail the gateway telemetry into the feed:**
    ```sh
    mkdir -p ~/bench
    ( kubectl logs -f -n ai-gateway deploy/gateway-mcp --all-containers 2>/dev/null &

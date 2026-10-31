@@ -1,22 +1,23 @@
 # Live deployment design — automated gateway ↔ AiSOC loop
 
-> **Status:** design (build to follow). **Target:** a local Kubernetes (`kind`)
-> cluster running the gateway and AiSOC as a continuous, automated
-> detect-and-respond loop — no batch files, no "would-call": telemetry streams
-> live and containment is actually executed, under a policy gate.
+> **Status:** built and demonstrated — see [live-build.md](live-build.md) for the
+> build and [attacks.md](attacks.md) for the five attacks run against it. A local
+> Kubernetes (`kind`) cluster runs the gateway, with a bridge + AiSOC sandbox as a
+> continuous, automated detect-and-respond loop — no batch files, no "would-call":
+> telemetry streams live and containment is actually executed, under a policy gate.
 
-This is the step up from [the bench](runbook.md): same controls, but wired into
-a real cluster with a continuous pipeline, so it behaves the way a production
+This is the live system: the same controls a bench test would exercise, but wired
+into a real cluster with a continuous pipeline, so it behaves the way a production
 SOC integration would.
 
 ---
 
 ## 1. Goal and scope
 
-| | Bench (what we proved) | Live (what this designs) |
+| | An offline test | Live (this system) |
 |---|---|---|
-| Telemetry | `ship.sh` → file → `adapt.py` | continuous **stream** (poll the analytics API) |
-| Detection | `aisoc-sandbox demo --file` (batch) | AiSOC running **continuously** on the stream |
+| Telemetry | export to a file, analyse after the fact | continuous **stream** (tail the pods' stdout) |
+| Detection | run the analysis once, by hand | detectors running **continuously** on the stream |
 | Response | a "would-call" in the ledger | **executed** against the control-plane API, under a **blast-radius gate** |
 | Platform | one laptop, docker compose | a real **kind** cluster: namespaces, services, NetworkPolicies |
 

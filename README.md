@@ -1,158 +1,124 @@
-# Tuskira AI Agent Gateway — Hands-On Security Assessment
+# Tuskira AI Agent Gateway — Live Detect-and-Respond Assessment
 
 An independent, hands-on security assessment of the open-source
-**[Tuskira AI Agent Gateway](https://github.com/Tuskira/ai-agent-gateway)** —
-run from a SOC analyst's perspective. It drives realistic adversarial traffic
-through a local instance of the gateway, verifies which controls actually fire,
-feeds the gateway's own telemetry to a reactive SIEM and a proactive threat
-hunt, executes containment through the gateway's API, and documents both the
-strengths and the observability gaps.
-
-Everything here runs against a **local** instance bound to `127.0.0.1`, uses
-**synthetic** identities and [TEST-NET](https://datatracker.ietf.org/doc/html/rfc5737)
-IPs (`198.51.100.0/24`, `203.0.113.0/24`), and spends **nothing** on LLM calls
-(a local mock upstream stands in for a real model). No real data, keys, or
-production systems are involved.
-
-> **Scope note.** This is a black/grey-box functional security assessment of a
-> tool's controls — not an exploit dump. The "gaps" below are design and
-> observability observations about an open-source product, surfaced by testing
-> it the way a SOC would before relying on it. See
-> [Responsible disclosure](#responsible-disclosure).
-
----
-
-## Live demonstration
+**[Tuskira AI Agent Gateway](https://github.com/Tuskira/ai-agent-gateway)**, run
+from a SOC analyst's perspective. It stands up a **live** instance of the gateway
+on a local Kubernetes (`kind`) cluster, builds a continuous
+**detect → investigate → respond** loop around it (a bridge + the AiSOC sandbox),
+and runs **five live attacks** that each exercise a different gateway control —
+verifying what fires, executing containment through the gateway's own API, and
+documenting the strengths and observability gaps that only surface under live
+testing.
 
 ![Five attacks, one loop](assets/five-attacks.png)
 
-Five adversarial scenarios were run **live** against the gateway on a local
-`kind` cluster, with a bridge + AiSOC closing a real detect → investigate →
-respond loop. Four end in an **autonomous** key revoke (the attacker's next call
-comes back `401`); the fifth is handled by the gateway's own lockout. Full
-catalog, per-attack reproduce steps, and session ids:
-**[docs/attacks.md](docs/attacks.md)**.
-
-More diagrams in [`assets/`](assets/): the architecture loop
-([detect-respond-loop](assets/detect-respond-loop.png)), a step-by-step
-walkthrough ([containment-walkthrough](assets/containment-walkthrough.png)), and
-a one-glance version ([containment-at-a-glance](assets/containment-at-a-glance.png)).
-The live build is in **[docs/live-build.md](docs/live-build.md)**; the design in
-**[docs/live-deployment.md](docs/live-deployment.md)**.
+> **Scope.** Everything runs against a **local** `kind` instance bound to
+> `127.0.0.1`, uses **synthetic** keys minted per run, spoofs only
+> [TEST-NET](https://datatracker.ietf.org/doc/html/rfc5737) IPs
+> (`203.0.113.0/24`), and spends **nothing** on LLM calls (Attack 3 is refused
+> before any provider is contacted). No real data, credentials, or production
+> systems are involved. This is a functional security assessment of a tool's
+> controls, not an exploit dump. See [Responsible disclosure](#responsible-disclosure).
 
 ---
 
 ## Why test an AI-agent gateway at all?
 
-AI agents are a new and fast-growing attack surface, and they are unusual in a
-way that matters to a SOC:
+AI agents are a new attack surface, and unusual in ways that matter to a SOC:
 
-- **They act with real credentials and real tools.** An agent reads files,
-  calls APIs, runs tools (via MCP), and talks to LLMs — all with delegated
-  authority. A stolen or hijacked agent identity is a stolen set of hands.
-- **Traditional SOC tooling is blind to them.** A SIEM, EDR, or WAF has no
-  native concept of *"which agent is doing what, with which tool, on whose
-  behalf."* Agent activity doesn't look like a user session or a process tree.
-- **An AI-agent gateway is the chokepoint that fixes this.** It sits in front
-  of every agent action — tool calls (MCP) and model calls (LLM) — so it is
-  the one place that can both **see** every action (observability) and **stop**
-  it in real time (enforcement), and the **hands** that carry out containment.
+- **They act with real credentials and real tools.** An agent reads files, calls
+  APIs and tools (via MCP), and talks to LLMs — all with delegated authority. A
+  hijacked agent identity is a stolen set of hands.
+- **Classic SOC tooling is blind to them.** A SIEM/EDR/WAF has no native concept
+  of *"which agent is doing what, with which tool, on whose behalf."*
+- **An AI-agent gateway is the chokepoint that fixes this.** It sits in front of
+  every agent action — tool calls (MCP) and model calls (LLM) — so it can both
+  **see** every action and **stop** it in real time, and serve as the **hands**
+  that carry out containment.
 
-If you're going to put a gateway on that critical path, you need to know its
-controls actually work, how its telemetry feeds the SOC, and where its blind
-spots are. That's what this assessment does.
+This assessment tests whether the gateway actually delivers that: does it
+enforce, does it record, and can detection be turned into real, autonomous
+containment?
 
 ---
 
-## The three-tool model
+## The live system
 
-The assessment exercises the gateway as the centre of a small detection-and-
-response system:
+```
+   attacker (agent)
+        │  MCP tools/call · /v1/messages
+        ▼
+  ┌───────────────┐   deny / allow / lockout      ┌──────────────┐
+  │  AI Agent     │ ───────────────────────────▶  │ MCP connector│
+  │  Gateway      │                               │  / LLM plane │
+  │  (on kind)    │ ── telemetry (stdout) ──┐      └──────────────┘
+  └───────▲───────┘                         │
+          │ DELETE /api-keys (revoke)        ▼
+          │                           ┌─────────────┐   scenario   ┌────────┐
+          └───────────────────────────│   Bridge    │ ───────────▶ │ AiSOC  │
+            contain (control-plane API)│ (detectors) │ ◀─────────── │(sandbox)│
+                                       └─────────────┘  recommend   └────────┘
+```
 
-| Role | Tool | What it does |
-|---|---|---|
-| **Eyes + enforcement + hands** | **The gateway** (Tuskira) | Sits on the live path; allows / denies / caps in real time, records every action, and executes containment via its control-plane API. |
-| **Reactive brain** | **AiSOC** ([beenuar/AiSOC](https://github.com/beenuar/AiSOC)) | Reads the gateway's telemetry, correlates it into incidents, and proposes containment (DETECT → TRIAGE → HUNT → RESPOND). |
-| **Proactive brain** | **The hunt** (ATHF-style) | Asks hypotheses over the same telemetry to find patterns no single alert would catch (e.g. tool enumeration). |
+- **Gateway** — the tool under test, on a real `kind` cluster (three planes:
+  MCP `:28080`, API `:28081`, LLM `:28082`). It enforces policy and emits a
+  telemetry record for every request.
+- **Bridge** — a ~350-line Python loop **we built** (not part of either tool). It
+  tails the gateway's stdout, runs detectors over a rolling window, calls AiSOC
+  for an investigation, and executes containment through the gateway's API under
+  a blast-radius policy gate. In production this role is a SOAR platform.
+- **AiSOC** — the open-source [`beenuar/AiSOC`](https://github.com/beenuar/AiSOC)
+  sandbox, as the investigation engine (DETECT → TRIAGE → HUNT → RESPOND).
 
-The loop is always the same: **gateway sees & acts → AiSOC or hunt reads &
-decides → the recommendation is executed back on the gateway.**
+Build it: **[docs/live-build.md](docs/live-build.md)** · design:
+**[docs/live-deployment.md](docs/live-deployment.md)**.
 
 ---
 
-## What was tested
+## The five attacks
 
-Capability coverage across both planes (MCP + LLM):
+Each attack hits a different plane and a different detector; together they cover
+all three planes and all five detectors. **Full mechanical walkthrough:**
+**[docs/attacks.md](docs/attacks.md)**.
 
-| Gateway capability | Exercised by | Result |
-|---|---|---|
-| API-key auth + per-IP lockout | Example 1 (brute force) | ✅ bad keys → `401`, IP → `429` lockout |
-| Per-agent authorization (profiles) | Examples 1 & 5 | ✅ off-profile tool → `-32003` |
-| Egress / SSRF guard | Example 3 | ✅ metadata IP (+ decimal/hex) → `400 egress_blocked` |
-| Hostile-content capture | Example 2 (prompt injection) | ✅ passed (`200`) but fully captured |
-| LLM token / cost / rate governance | Example 4 | ✅ oversized `400`, rate `429`, budget `429` — before any paid call |
-| Observability / telemetry | all | ✅ routed actions logged + attributed · ⚠️ auth failures recorded but **not shown in the tenant-scoped console** (G1) |
-| Response actuator (revoke / tighten) | Attacks 1–4 (live loop) | ✅ `DELETE /api-keys` → agent's next call `401`, autonomously |
-| Credential vaulting / injection | Example 6 (secret injection) | ✅ injected at the edge; agent never holds or can read it |
+| # | Attack | Script | Plane | Gateway behavior | Bridge → response | Finding |
+|---|--------|--------|-------|------------------|-------------------|---------|
+| 1 | Tool enumeration | `tool_recon.py` | MCP | deny 18 tools `-32003` | `tool_enumeration` → **revoke** | caught at 6th distinct tool |
+| 2 | Compromised agent | `live_attack.py` | MCP | deny `-32003` | `compromised_agent` → **revoke** | cut off at 3rd denial; `200`+error (G3) |
+| 3 | LLM cost abuse | `llm_attack.py` | LLM | deny `400`, **$0 spent** | `llm_abuse` → **revoke** | cost capped before spend |
+| 4 | Prompt injection | `inject_attack.py` | MCP | **allow `200`** | `prompt_injection` → **revoke** | payload blindness (G5) |
+| 5 | Credential brute force | `brute_attack.py` | auth | **lockout `429`** | `brute_force` → *info* | console-blind (G1) |
 
-The six adversarial scenarios, each mapped to the detect-and-respond flow:
+Attacks 1–4 end in an **autonomous** revoke (the attacker's next call → `401`);
+Attack 5 is handled by the gateway's own lockout.
 
-| # | Scenario | Plane | Detector | Headline |
-|---|---|---|---|---|
-| 1 | Compromised agent + credential brute force | MCP | AiSOC | gateway enforces & records → SIEM builds one incident → revoke |
-| 2 | Prompt injection via an allowed tool | MCP | AiSOC | gateway **passes** content it can't judge, but captures it → SIEM catches it |
-| 3 | SSRF / credential theft | MCP (control) | — | gateway **blocks at the door**; never reaches the network or SIEM |
-| 4 | LLM resource abuse ("LLM-jacking") | LLM | AiSOC | gateway **meters & caps** by key before any paid call → SIEM flags cost harvesting |
-| 5 | Tool enumeration / permission discovery | MCP | **hunt** | quiet per call, loud in aggregate → proactive hunt confirms |
-| 6 | Secret injection (credential vaulting) | LLM | — | gateway injects a vaulted credential the agent never sees or can steal |
-
-These bench scenarios were then re-run **live on `kind` as five attacks** with
-the containment executed **autonomously** by the bridge — see the
-[live attack catalog](docs/attacks.md). The loop-closed result: the containment
-each attack triggers (`gateway.apikey.revoke`) is executed against the gateway
-API, and the revoked key's next request comes back `401` — in seconds, no human
-in the path.
-
-MITRE mappings used: ATT&CK **T1069 / T1078 / T1110 / T1496 / T1613 / T1059**
-and ATLAS **AML.T0034 (cost harvesting) / AML.T0051 (prompt injection) /
-AML.T0054 (jailbreak)**.
+More diagrams in [`assets/`](assets/): the architecture loop
+([detect-respond-loop](assets/detect-respond-loop.png)), a step-by-step
+walkthrough ([containment-walkthrough](assets/containment-walkthrough.png)), and
+a one-glance version ([containment-at-a-glance](assets/containment-at-a-glance.png)).
 
 ---
 
 ## Key findings
 
-The gateway is a genuinely strong control point: it closes the agent-visibility
-blind spot, enforces authorization, egress, and LLM cost/rate limits *on the
-live path*, vaults credentials so agents never hold them, and exposes a
-control-plane API that turns detection into real containment.
-
-A SOC-minded assessment also names the gaps. The notable ones:
+The gateway is a strong control point: it closes the agent-visibility blind spot,
+enforces authorization and LLM cost/rate limits *on the live path*, and exposes a
+control-plane API that turns detection into **real, autonomous containment**. The
+gaps a SOC should know:
 
 - **The console cannot show authentication abuse (the headline).** Auth failures
-  and the IP lockout *are* recorded to the telemetry stream — but those records
-  carry **no tenant and no key id** (auth failed before a principal), and every
-  console view is **tenant-scoped**, so they're silently dropped from Access
-  Logs, Overview, Session Timeline. The brute force (Attack 5) was invisible in
-  the console yet fully present in the raw feed (the bridge detected it there).
-  Treat the gateway as a **telemetry source, not a security console** — ship its
+  and lockouts *are* recorded, but with **no tenant/key id**, and every console
+  view is **tenant-scoped** — so brute force and revoked-key reuse are invisible
+  in the UI (Attack 5). Treat the gateway as a **telemetry source** and ship its
   stdout to your SIEM.
-- **API-key lifecycle isn't audited.** A revoke is a soft-delete; the key shows
-  `Revoked`, but the *action* leaves no event — who/when/why live only in your
-  SOAR layer's audit log.
-- **Denials are `HTTP 200` with an `error_code`.** Alert on `error_code`
-  (`-32003`), not HTTP status.
-- **Payload blindness + MCP has no per-key rate limit.** The gateway enforces
-  *which* tool, not the payload — so an injection rides through an allowed tool
-  (`200`); and `rpm` is enforced only on the LLM plane, so an MCP attacker needs
-  a **revoke**, not a throttle.
-- **The IP lockout's `X-Forwarded-For` trust is config-critical.** The default is
-  safe (spoofed XFF ignored — confirmed live), but a too-broad `trusted_proxies`
-  is bypassable.
-
-> The detect → investigate → respond loop here ran **live and autonomous** for
-> low-blast-radius actions — not batch, not human-gated. (An earlier draft's
-> claim that auth `401`s are "not recorded" was wrong; the corrected finding —
-> recorded but console-invisible — is sharper. See findings.md.)
+- **API-key lifecycle isn't audited.** A revoke changes a field; the *action*
+  leaves no event.
+- **Denials are `HTTP 200` with `error_code`.** Alert on `error_code`, not HTTP
+  status.
+- **Payload blindness + no per-key MCP rate limit.** An injection rides through
+  an allowed tool (`200`); the right MCP containment is a revoke, not a throttle.
+- **The lockout's `X-Forwarded-For` trust is config-critical** (default is safe —
+  confirmed live).
 
 Full detail with evidence: **[docs/findings.md](docs/findings.md)**.
 
@@ -160,40 +126,22 @@ Full detail with evidence: **[docs/findings.md](docs/findings.md)**.
 
 ## Reproduce it
 
-**The live demonstration (on `kind`, with the autonomous loop)** is the primary
-path: build it with **[docs/live-build.md](docs/live-build.md)**, then run the
-five attacks per **[docs/attacks.md](docs/attacks.md)**. That's where the
-findings in this repo came from.
+1. **Build the live system** — [docs/live-build.md](docs/live-build.md): gateway
+   on `kind`, bodies captured, the stdout→feed tailer, and the bridge live.
+2. **Run the attacks** — [docs/attacks.md](docs/attacks.md): each script, its
+   command, and what to watch, in a second terminal.
 
-The original bench scenarios (Docker Compose, after-the-fact analysis) are in
-**[docs/runbook.md](docs/runbook.md)**. The short version of that path:
-
-**Prerequisites:** Docker + `docker compose`, Python 3, `curl`, `jq`, Node
-(`npx`), and a local clone of the
-[gateway repo](https://github.com/Tuskira/ai-agent-gateway). For Examples 4 & 6,
-the mock upstream reaches the gateway on `host.docker.internal`.
+The short version (after the build):
 
 ```sh
-# 1) bring the gateway up with analytics + bodies (from the gateway repo)
-GATEWAY_SINKS_CLICKHOUSE_ENABLED=true GATEWAY_SINKS_STDOUT_INCLUDE_BODIES=true \
-  docker compose -f deploy/docker-compose.yml --profile analytics up -d
+# terminal 1 — the bridge (live)
+python3 -u bridge.py
 
-# 2) register the reference MCP tool server
-PORT=23014 npx -y @modelcontextprotocol/server-everything streamableHttp &
-#    ...and register it as the "everything" connector (see docs/runbook.md)
-
-# 3) export your admin key and start the telemetry tail
-export GATEWAY_ADMIN_KEY=gk_...
-./scripts/ship.sh &          # tails both planes into ~/bench/gateway-events.jsonl
-
-# 4) run a scenario, e.g. Example 1 (compromised agent + brute force)
-python3 scripts/gw_traffic.py --baseline 12 --probes 10 --spike 60 --bruteforce 16
-python3 scripts/adapt.py                         # build the AiSOC scenario
-aisoc-sandbox demo --file ~/bench/scenario.json  # investigate it
+# terminal 2 — an attack
+export GATEWAY_ADMIN_KEY=<admin key>  GATEWAY_API=http://localhost:28081/api/v1
+export GATEWAY_MCP=http://localhost:28080/mcp  GATEWAY_LLM=http://localhost:28082
+python3 tool_recon.py     # or live_attack / llm_attack / inject_attack / brute_attack
 ```
-
-Each scenario's exact commands and what to look for on the console are in the
-runbook.
 
 ---
 
@@ -203,55 +151,42 @@ runbook.
 tuskira-gateway-assessment/
 ├── README.md                 this file
 ├── docs/
-│   ├── attacks.md            the five live attacks — catalog + reproduce
+│   ├── attacks.md            the five attacks — mechanical walkthrough + reproduce
 │   ├── findings.md           strengths + gaps, with live evidence
 │   ├── live-build.md         build the live kind + bridge + AiSOC loop (M0–M6)
-│   ├── live-deployment.md    the live-system design (architecture, bridge)
-│   └── runbook.md            original bench scenarios (Docker Compose)
+│   └── live-deployment.md    the live-system design (architecture, bridge)
 ├── assets/                   the four diagrams (.png for GitHub, .html sources)
 ├── bridge/
 │   ├── bridge.py             the live detect-and-respond loop (~350 LOC, stdlib)
-│   └── README.md             how the bridge runs, its detectors and responses
+│   └── README.md             the bridge's detectors, responses, and how to run it
 └── scripts/
     ├── tool_recon.py         Attack 1  tool enumeration
     ├── live_attack.py        Attack 2  compromised agent (persistent)
     ├── llm_attack.py         Attack 3  LLM cost abuse (max_tokens, $0 spent)
     ├── inject_attack.py      Attack 4  prompt injection through an allowed tool
-    ├── brute_attack.py       Attack 5  credential brute force → lockout
-    ├── ship.sh               tail gateway telemetry into one feed (both planes)
-    ├── ssrf.sh               bench  SSRF / egress guard
-    ├── secret_demo.py        bench  secret injection / credential vaulting
-    └── …                     other bench helpers (gw_traffic, adapt*, hunt*, …)
+    └── brute_attack.py       Attack 5  credential brute force → lockout
 ```
 
-All scripts are pure Python/bash standard library, take `GATEWAY_ADMIN_KEY`
-(and the `GATEWAY_API/MCP/LLM` endpoints) from the environment, and target
-`localhost` only. The live attacks target the `kind` ports (`:28081/:28080/:28082`).
+All scripts are pure Python standard library, take `GATEWAY_ADMIN_KEY` and the
+`GATEWAY_API/MCP/LLM` endpoints from the environment, and target `localhost`
+only (the `kind` ports `:28081/:28080/:28082`).
 
 ---
 
 ## Responsible disclosure
 
-The gaps documented here were observed on a **local** instance of an
-open-source tool. They are design/observability observations, not weaponised
-exploits. Before this repository is made public, the observability findings
-should be shared with the vendor (`security@tuskira.ai`) so they can respond
-first. The repository is intended to be kept **private** until then.
-
-Nothing in this repo contains real credentials: every key is read from the
-environment or is a synthetic placeholder, and all identities and IPs are
-documentation/test ranges.
+The gaps here were observed on a **local** instance of an open-source tool —
+design/observability observations, not weaponised exploits. The observability
+findings (especially G1) should be shared with the vendor
+(`security@tuskira.ai`) before this repository is made public; it is intended to
+stay **private** until then. Nothing in this repo contains real credentials:
+every key is read from the environment or minted synthetically per run, and all
+IPs are documentation/test ranges.
 
 ---
 
 ## References
 
 - Tuskira AI Agent Gateway — <https://github.com/Tuskira/ai-agent-gateway>
-- beenuar / AiSOC (reactive SIEM used here) — <https://github.com/beenuar/AiSOC>
+- beenuar / AiSOC (investigation sandbox) — <https://github.com/beenuar/AiSOC>
 - MITRE ATT&CK — <https://attack.mitre.org> · MITRE ATLAS — <https://atlas.mitre.org>
-- Model Context Protocol (MCP) — <https://modelcontextprotocol.io>
-
----
-
-*Independent security assessment — Jophiel Arevalo Enriquez. Run for learning
-and evaluation; not affiliated with or endorsed by Tuskira.*

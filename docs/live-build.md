@@ -64,7 +64,7 @@ you want the Overview dashboards.)
 
 ---
 
-## M2 — Start the telemetry feed (live `ship.sh`)
+## M2 — Start the telemetry feed
 
 ```sh
 mkdir -p ~/bench
@@ -106,17 +106,20 @@ Watch `~/bench/bridge-state/audit.log` and `.../incidents/` fill up.
 
 ## M4 — Adversarial traffic (exercise the loop)
 
-Point the assessment generators at the **kind ports** (note `28080/28081`):
+Run the five attacks at the **kind ports** (note `28080/28081/28082`). Full
+per-attack walkthrough in [attacks.md](attacks.md):
 
 ```sh
 cd ~/bench
 export GATEWAY_ADMIN_KEY="$GW_ADMIN"
 export GATEWAY_API=http://localhost:28081/api/v1
 export GATEWAY_MCP=http://localhost:28080/mcp
-python3 tool_recon.py        # enumeration  -> bridge: revoke
-python3 gw_traffic.py --baseline 8 --probes 6 --spike 20 --bruteforce 12   # compromised + brute force
-python3 inject.py            # injection    -> bridge: tighten
-# LLM ones (Ex4/Ex6) also work once the mock upstream is reachable from the pods.
+export GATEWAY_LLM=http://localhost:28082
+python3 tool_recon.py       # 1 enumeration  -> bridge: revoke
+python3 live_attack.py      # 2 compromised  -> bridge: revoke
+python3 llm_attack.py       # 3 LLM cost     -> bridge: revoke  ($0 spent)
+python3 inject_attack.py    # 4 injection    -> bridge: revoke  (needs store_bodies)
+python3 brute_attack.py     # 5 brute force  -> gateway lockout (bridge: info)
 ```
 
 To keep it running continuously, wrap these in a loop or a k8s CronJob.
