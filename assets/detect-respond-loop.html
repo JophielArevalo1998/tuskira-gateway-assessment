@@ -1,0 +1,204 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Detect-Respond Loop</title>
+<style>
+/* Layout: one hero workflow diagram of the live gateway <-> AiSOC containment loop, in Tuskira's dark-banner palette. */
+:root{
+  --bg:#0a1529; --bg2:#0c1a33;
+  --fg:#e9f1fb; --muted:#93a7c6;
+  --blue:#5aa0e0; --amber:#e3ad5a; --red:#e07a5c; --green:#6fcb9b;
+  --sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--fg);font-family:var(--sans);
+  background:
+    radial-gradient(1100px 460px at 50% -8%, #13294c 0%, transparent 62%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+}
+.wrap{
+  max-width:1180px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:30px 44px;
+}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:0 0 11px}
+h1{font-size:clamp(21px,3.3vw,30px);font-weight:700;margin:0 0 8px;text-wrap:balance;letter-spacing:-.012em}
+.sub{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 22px;max-width:74ch}
+figure{margin:0}
+.scroll{overflow-x:auto;border-radius:22px;-webkit-overflow-scrolling:touch}
+svg{display:block;width:100%;min-width:1040px;height:auto}
+svg text{font-family:var(--sans)}
+.m{font-family:var(--mono)}
+figcaption{color:var(--muted);font-size:13.5px;line-height:1.55;margin-top:16px;max-width:92ch}
+figcaption b{color:var(--fg);font-weight:600}
+.legend{display:flex;flex-wrap:wrap;gap:12px 22px;margin:18px 0 0;padding:0;list-style:none;font-size:12.5px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:9px}
+.legend .sw{width:24px;border-top:2.5px dashed var(--blue);border-radius:2px}
+.legend .sw.amber{border-color:var(--amber)}
+.legend .sw.red{border-color:var(--red)}
+.legend .dot{width:11px;height:11px;border-radius:50%;background:var(--green)}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Tuskira assessment &middot; live workflow</p>
+  <h1>Autonomous detect &rarr; investigate &rarr; respond</h1>
+  <p class="sub">What we stood up on a local <span class="m" style="color:var(--fg)">kind</span> cluster: the gateway enforces policy and emits telemetry, a bridge and AiSOC detect and investigate, and every containment action runs back through the gateway&rsquo;s own control-plane API &mdash; closing the loop with no human in the path for low-blast-radius actions.</p>
+
+  <figure>
+    <div class="scroll">
+      <svg viewBox="0 0 1280 760" role="img" aria-label="A closed workflow loop on a local kind cluster: a compromised agent sends off-policy MCP tool calls to the AI Agent Gateway, which denies them with error -32003 and emits telemetry; the telemetry feeds a detection bridge, which runs an AiSOC four-agent investigation, which recommends revoking the key; containment executes a DELETE against the gateway's control-plane API, and the agent's next call returns 401.">
+        <defs>
+          <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#0c1c38"/>
+            <stop offset="1" stop-color="#0a1529"/>
+          </linearGradient>
+          <linearGradient id="gwGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#1c3b68"/>
+            <stop offset="1" stop-color="#132c52"/>
+          </linearGradient>
+          <radialGradient id="gwGlow" cx="0.5" cy="0.4" r="0.7">
+            <stop offset="0" stop-color="#2d568f" stop-opacity="0.55"/>
+            <stop offset="1" stop-color="#2d568f" stop-opacity="0"/>
+          </radialGradient>
+          <linearGradient id="shieldGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0" stop-color="#7cc0f5"/>
+            <stop offset="1" stop-color="#4b8fd6"/>
+          </linearGradient>
+          <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+            <path d="M40 0H0V40" fill="none" stroke="#ffffff" stroke-opacity="0.028" stroke-width="1"/>
+          </pattern>
+          <marker id="ahBlue" markerWidth="11" markerHeight="11" refX="8.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#5aa0e0"/>
+          </marker>
+          <marker id="ahAmber" markerWidth="11" markerHeight="11" refX="8.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#e3ad5a"/>
+          </marker>
+          <marker id="ahRed" markerWidth="11" markerHeight="11" refX="8.5" refY="4" orient="auto" markerUnits="userSpaceOnUse">
+            <path d="M0,0 L9,4 L0,8 Z" fill="#e07a5c"/>
+          </marker>
+        </defs>
+
+        <!-- canvas -->
+        <rect x="3" y="3" width="1274" height="754" rx="22" fill="url(#bgGrad)" stroke="#20396099" stroke-width="1.5"/>
+        <rect x="3" y="3" width="1274" height="754" rx="22" fill="url(#grid)"/>
+
+        <!-- header -->
+        <text x="40" y="47" class="m" font-size="21" font-weight="700" letter-spacing="5" fill="#eef4fc">TUSKIRA</text>
+        <line x1="193" y1="29" x2="193" y2="49" stroke="#365585" stroke-width="1.5"/>
+        <text x="210" y="47" font-size="17" font-weight="600" fill="#cbd9ee">AI Agent Gateway + AiSOC</text>
+        <text x="1240" y="47" text-anchor="end" font-size="13.5" class="m" fill="#8aa0c2">live on kind &#183; detect &#8594; investigate &#8594; respond</text>
+
+        <!-- ===================== TOP ROW: data plane ===================== -->
+
+        <!-- Compromised agent (1) -->
+        <rect x="40" y="80" width="225" height="150" rx="14" fill="#141a2e" stroke="#7a4238" stroke-width="1.5"/>
+        <circle cx="247" cy="98" r="12" fill="#e07a5c"/><text x="247" y="102.5" text-anchor="middle" font-size="13" font-weight="700" fill="#1a0f0c">1</text>
+        <text x="60" y="110" font-size="16" font-weight="700" fill="#f3d9d0">Compromised agent</text>
+        <text x="60" y="130" font-size="11.5" fill="#b98f84">off-policy MCP client</text>
+        <circle cx="64" cy="154" r="3" fill="#e07a5c"/><text x="76" y="158" font-size="12" fill="#dfe8f5" class="m">gen-recon &#183; enumeration</text>
+        <circle cx="64" cy="178" r="3" fill="#e07a5c"/><text x="76" y="182" font-size="12" fill="#dfe8f5" class="m">live-attacker &#183; persistent</text>
+        <text x="60" y="214" font-size="10.5" class="m" fill="#8295b4">agent key &#183; gk_&#8230; (agent role)</text>
+
+        <!-- Gateway hub (2) -->
+        <rect x="453" y="62" width="372" height="188" rx="18" fill="url(#gwGlow)"/>
+        <rect x="455" y="64" width="368" height="184" rx="16" fill="url(#gwGrad)" stroke="#4a84c2" stroke-width="1.75"/>
+        <circle cx="805" cy="82" r="12" fill="#5aa0e0"/><text x="805" y="86.5" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1a30">2</text>
+        <text x="640" y="95" text-anchor="middle" font-size="19" font-weight="700" fill="#eef5fd">AI Agent Gateway</text>
+        <!-- shield -->
+        <path d="M640,112 L655,117 L655,131 C655,142 648,148 640,151 C632,148 625,142 625,131 L625,117 Z" fill="url(#shieldGrad)" stroke="#a9d4f7" stroke-width="1"/>
+        <polyline points="632.5,130 637.5,135.5 648,124" fill="none" stroke="#0e2746" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+        <circle cx="653" cy="146" r="6" fill="#e3ad5a" stroke="#0e2340" stroke-width="1.4"/>
+        <line x1="653" y1="146" x2="653" y2="142.5" stroke="#0e2340" stroke-width="1.2" stroke-linecap="round"/>
+        <line x1="653" y1="146" x2="655.6" y2="147.4" stroke="#0e2340" stroke-width="1.2" stroke-linecap="round"/>
+        <text x="640" y="177" text-anchor="middle" font-size="12" fill="#bcd0ec">Sits in the path &#8212; authenticates the key, enforces the</text>
+        <text x="640" y="193" text-anchor="middle" font-size="12" fill="#bcd0ec">profile, denies off-policy calls, logs every request.</text>
+        <rect x="487" y="214" width="306" height="26" rx="13" fill="#0e2546" stroke="#39618f" stroke-width="1"/>
+        <text x="640" y="231" text-anchor="middle" font-size="11.5" class="m" fill="#e3ad5a">auth &#183; profile &#183; &#8722;32003 &#183; telemetry</text>
+
+        <!-- MCP connector -->
+        <rect x="900" y="80" width="235" height="150" rx="14" fill="#122747" stroke="#2f538a" stroke-width="1.5"/>
+        <text x="918" y="110" font-size="16" font-weight="700" fill="#e9f1fb">MCP connector</text>
+        <text x="918" y="130" font-size="11.5" fill="#93a7c6">everything &#183; in-cluster</text>
+        <circle cx="922" cy="154" r="3.2" fill="#6fcb9b"/><text x="934" y="158" font-size="12" class="m" fill="#dfe8f5">echo, get-sum &#8594; 200</text>
+        <circle cx="922" cy="178" r="3.2" fill="#e07a5c"/><text x="934" y="182" font-size="12" class="m" fill="#dfe8f5">all others &#8594; &#8722;32003</text>
+        <text x="918" y="214" font-size="10.5" class="m" fill="#8295b4">reference MCP server</text>
+
+        <!-- top connectors -->
+        <!-- agent -> gateway (tools/call) -->
+        <path d="M267,120 L450,114" fill="none" stroke="#5aa0e0" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahBlue)"/>
+        <circle cx="360" cy="117" r="3" fill="#5aa0e0"/>
+        <text x="359" y="106" text-anchor="middle" font-size="11" class="m" fill="#8fc0ec">MCP tools/call</text>
+        <!-- gateway -> agent (revoked -> 401) -->
+        <path d="M452,200 L269,208" fill="none" stroke="#e07a5c" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahRed)"/>
+        <text x="360" y="225" text-anchor="middle" font-size="10.5" class="m" fill="#e59177">revoked key &#8594; 401 cut off</text>
+        <!-- gateway -> MCP -->
+        <path d="M827,126 L896,126" fill="none" stroke="#5aa0e0" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahBlue)"/>
+        <text x="861" y="115" text-anchor="middle" font-size="10" class="m" fill="#8fc0ec">tools/call</text>
+
+        <!-- ===================== LOOP: telemetry + response ===================== -->
+
+        <!-- Detection bridge (3) -->
+        <rect x="110" y="430" width="300" height="155" rx="14" fill="#122747" stroke="#2f538a" stroke-width="1.5"/>
+        <circle cx="392" cy="448" r="12" fill="#5aa0e0"/><text x="392" y="452.5" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1a30">3</text>
+        <text x="128" y="462" font-size="16" font-weight="700" fill="#e9f1fb">Detection bridge</text>
+        <text x="128" y="482" font-size="11.5" fill="#93a7c6">rolling-window detectors</text>
+        <circle cx="132" cy="506" r="3" fill="#5aa0e0"/><text x="143" y="510" font-size="11.5" class="m" fill="#dfe8f5">tool_enumeration</text>
+        <circle cx="132" cy="528" r="3" fill="#5aa0e0"/><text x="143" y="532" font-size="11.5" class="m" fill="#dfe8f5">compromised_agent</text>
+        <circle cx="275" cy="506" r="3" fill="#5aa0e0"/><text x="286" y="510" font-size="11.5" class="m" fill="#dfe8f5">prompt_injection</text>
+        <circle cx="275" cy="528" r="3" fill="#5aa0e0"/><text x="286" y="532" font-size="11.5" class="m" fill="#dfe8f5">llm_abuse</text>
+        <rect x="128" y="550" width="264" height="24" rx="12" fill="#0e2546" stroke="#39618f" stroke-width="1"/>
+        <text x="260" y="566" text-anchor="middle" font-size="10.5" class="m" fill="#e3ad5a">policy gate &#183; AUTO_TIERS = low</text>
+
+        <!-- AiSOC (4) -->
+        <rect x="470" y="430" width="300" height="155" rx="14" fill="#122747" stroke="#2f538a" stroke-width="1.5"/>
+        <circle cx="752" cy="448" r="12" fill="#5aa0e0"/><text x="752" y="452.5" text-anchor="middle" font-size="13" font-weight="700" fill="#0b1a30">4</text>
+        <text x="488" y="462" font-size="17" font-weight="700" fill="#e9f1fb">AiSOC</text>
+        <text x="488" y="482" font-size="11.5" fill="#93a7c6">4-agent investigation &#183; sandbox</text>
+        <text x="488" y="510" font-size="12" class="m" fill="#dfe8f5">DETECT &#8594; TRIAGE &#8594;</text>
+        <text x="488" y="531" font-size="12" class="m" fill="#dfe8f5">HUNT &#8594; RESPOND</text>
+        <rect x="488" y="550" width="264" height="24" rx="12" fill="#0e2546" stroke="#39618f" stroke-width="1"/>
+        <text x="620" y="566" text-anchor="middle" font-size="10" class="m" fill="#e3ad5a">confidence 83/100 &#183; MITRE T1069/T1078</text>
+
+        <!-- Containment (5) -->
+        <rect x="830" y="430" width="300" height="155" rx="14" fill="#1a1b2b" stroke="#8a6a36" stroke-width="1.5"/>
+        <circle cx="1112" cy="448" r="12" fill="#e3ad5a"/><text x="1112" y="452.5" text-anchor="middle" font-size="13" font-weight="700" fill="#241705">5</text>
+        <text x="848" y="462" font-size="16" font-weight="700" fill="#f3e4c9">Containment</text>
+        <text x="848" y="482" font-size="11.5" fill="#c6ad84">gateway control-plane API</text>
+        <text x="848" y="510" font-size="12" class="m" fill="#e3ad5a">key revoked &#183; HTTP 204</text>
+        <text x="848" y="531" font-size="12" class="m" fill="#e59177">agent cut off &#8594; 401</text>
+        <rect x="848" y="550" width="264" height="24" rx="12" fill="#2a2111" stroke="#6f5527" stroke-width="1"/>
+        <text x="980" y="566" text-anchor="middle" font-size="10" class="m" fill="#e3ad5a">reversible &#183; single identity &#183; low blast radius</text>
+
+        <!-- loop connectors -->
+        <!-- gateway -> bridge: telemetry (down the left) -->
+        <path d="M545,248 C 470,312 322,352 262,426" fill="none" stroke="#5aa0e0" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahBlue)"/>
+        <circle cx="372" cy="340" r="3" fill="#5aa0e0"/>
+        <text x="305" y="404" text-anchor="middle" font-size="11" class="m" fill="#8fc0ec">telemetry &#183; stdout feed + ClickHouse</text>
+        <!-- bridge -> aisoc -->
+        <path d="M412,507 L466,507" fill="none" stroke="#5aa0e0" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahBlue)"/>
+        <text x="440" y="496" text-anchor="middle" font-size="10" class="m" fill="#8fc0ec">scenario</text>
+        <!-- aisoc -> containment -->
+        <path d="M772,507 L826,507" fill="none" stroke="#5aa0e0" stroke-width="1.8" stroke-dasharray="6 5" marker-end="url(#ahBlue)"/>
+        <text x="799" y="496" text-anchor="middle" font-size="10" class="m" fill="#8fc0ec">recommend</text>
+        <!-- containment -> gateway: revoke (up the right), CLOSES THE LOOP -->
+        <path d="M980,428 C 980,338 882,300 758,250" fill="none" stroke="#e3ad5a" stroke-width="2" stroke-dasharray="6 5" marker-end="url(#ahAmber)"/>
+        <circle cx="902" cy="346" r="3" fill="#e3ad5a"/>
+        <text x="1100" y="348" text-anchor="middle" font-size="11" class="m" fill="#e8bd78">DELETE /api-keys/{id} &#8594; 204</text>
+
+        <!-- footer caption inside banner -->
+        <line x1="40" y1="700" x2="1240" y2="700" stroke="#ffffff" stroke-opacity="0.07" stroke-width="1"/>
+        <text x="640" y="726" text-anchor="middle" font-size="12" fill="#8aa0c2">Self-hosted on a local kind cluster &#183; gateway enforces &amp; observes &#183; bridge + AiSOC detect, investigate &amp; contain &#183; every action via the gateway&#8217;s own control-plane API</text>
+      </svg>
+    </div>
+    <figcaption>The loop we demonstrated live: a <b>compromised agent</b> probes off-policy tools &rarr; the <b>gateway</b> denies each with <span class="m">&minus;32003</span> and streams telemetry &rarr; the <b>detection bridge</b> flags the pattern &rarr; <b>AiSOC</b> runs a four-agent investigation and recommends a revoke &rarr; <b>containment</b> executes <span class="m">DELETE /api-keys</span> on the gateway and the agent&rsquo;s next call returns <span class="m">401</span>. Blue is the observe/investigate path; amber is the containment action that closes the loop back onto the gateway.</figcaption>
+  </figure>
+
+  <ul class="legend">
+    <li><span class="sw"></span> observe &middot; telemetry &amp; investigation</li>
+    <li><span class="sw amber"></span> containment action (revoke)</li>
+    <li><span class="sw red"></span> denied / revoked &rarr; 401</li>
+    <li><span class="dot"></span> allowed &rarr; 200</li>
+  </ul>
+</div>

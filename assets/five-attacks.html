@@ -1,0 +1,199 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Five Attacks, One Loop</title>
+<style>
+/* Layout: a five-attack catalog, each a compact flow + reproduce metadata, Tuskira dark palette. */
+:root{
+  --bg:#0a1529; --bg2:#0c1a33;
+  --panel:#112644; --line:#20396a; --sub:#0c1d38; --sub-line:#1f3a60;
+  --fg:#e9f1fb; --muted:#90a4c4;
+  --blue:#5aa0e0; --amber:#e3ad5a; --red:#e07a5c; --green:#5ec6a0; --gray:#7f93b2;
+  --sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--fg);font-family:var(--sans);
+  background:
+    radial-gradient(1100px 460px at 50% -8%, #13294c 0%, transparent 62%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+}
+.wrap{
+  max-width:1000px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:30px 46px;
+}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:0 0 11px}
+h1{font-size:clamp(22px,3.6vw,32px);font-weight:700;margin:0 0 8px;text-wrap:balance;letter-spacing:-.012em}
+.lead{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 22px;max-width:70ch}
+.howto{background:var(--sub);border:1px solid var(--sub-line);border-radius:12px;padding:13px 16px;margin:0 0 30px;font-size:12.5px;color:#c2d1e8;line-height:1.55}
+.howto b{color:var(--fg);font-weight:600}
+.howto .m{font-family:var(--mono);color:#cdd9ec}
+
+.atk{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:18px 18px 16px;margin-bottom:20px}
+.atk-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.num{--ac:var(--blue);flex:0 0 auto;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--ac) 16%,transparent);border:1.5px solid var(--ac);
+  font:700 16px/1 var(--mono);color:var(--ac)}
+.atk-title{font-size:18px;font-weight:700;letter-spacing:-.01em;margin:0}
+.atk-title .det{display:block;font:600 11px/1.3 var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em;margin-top:3px}
+.script{margin-left:auto;font-family:var(--mono);font-size:12px;color:var(--amber);
+  background:color-mix(in srgb,var(--amber) 14%,transparent);border:1px solid color-mix(in srgb,var(--amber) 36%,transparent);
+  border-radius:7px;padding:5px 10px;white-space:nowrap}
+
+.flow{display:flex;align-items:stretch;gap:0;margin-bottom:15px}
+.fnode{--ac:var(--blue);flex:1 1 0;min-width:0;background:var(--sub);border:1px solid var(--sub-line);border-top:3px solid var(--ac);
+  border-radius:10px;padding:11px 10px 12px;text-align:center}
+.fnode.red{--ac:var(--red)} .fnode.amber{--ac:var(--amber)} .fnode.green{--ac:var(--green)} .fnode.gray{--ac:var(--gray)}
+.fnode .t{font-weight:700;font-size:13px;margin:0 0 3px}
+.fnode .s{font-family:var(--mono);font-size:10.5px;color:#c3d2e8;line-height:1.3;margin:0}
+.farrow{flex:0 0 30px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding-top:24px}
+.farrow .lbl{font-family:var(--mono);font-size:8.5px;color:var(--muted);white-space:nowrap}
+.farrow .ln{color:#4f78ad;font-size:17px;line-height:1}
+.farrow.act .ln,.farrow.act .lbl{color:var(--amber)}
+@media(max-width:640px){
+  .flow{flex-direction:column}
+  .fnode{flex:none}
+  .farrow{flex:none;flex-direction:row;gap:8px;height:auto;padding:7px 0}
+  .farrow .ln{display:inline-block;transform:rotate(90deg)}
+}
+
+.meta{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;background:var(--sub);border:1px solid var(--sub-line);
+  border-radius:10px;padding:11px 13px;font-size:12px;line-height:1.5}
+.meta .k{color:var(--muted);font-family:var(--mono);font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;white-space:nowrap;padding-top:1px}
+.meta .v{color:#dbe6f5;min-width:0;overflow-wrap:anywhere}
+.meta .v.mono{font-family:var(--mono);font-size:11.5px}
+.meta .find{color:#e9f1fb}
+.meta .find b{color:var(--amber);font-weight:600}
+
+.foot{color:var(--muted);font-size:12.5px;line-height:1.55;margin-top:8px}
+.foot b{color:var(--fg);font-weight:600}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Tuskira assessment &middot; attack catalog</p>
+  <h1>Five attacks, one loop</h1>
+  <p class="lead">Every attack run live on a local <span style="font-family:var(--mono)">kind</span> cluster against the Tuskira AI Agent Gateway, with the bridge + AiSOC closing the loop. Each card is one attack: what it does, how the gateway responds, what the bridge does, and the finding &mdash; plus the script and session id to reproduce it.</p>
+
+  <div class="howto">
+    <b>To reproduce any attack:</b> have the gateway running on kind and the bridge live (<span class="m">python3 -u bridge.py</span>), then run the attack&rsquo;s script in a second terminal with <span class="m">GATEWAY_ADMIN_KEY</span> / <span class="m">GATEWAY_API</span> / <span class="m">GATEWAY_MCP</span> (or <span class="m">GATEWAY_LLM</span>) set. Each run mints a fresh key and session; the session ids below reference the demonstrated runs (look them up in <b>Session Timeline</b>).
+  </div>
+
+  <!-- ATTACK 1 -->
+  <div class="atk">
+    <div class="atk-head">
+      <div class="num red">1</div>
+      <div><p class="atk-title">Tool enumeration<span class="det">detector: tool_enumeration &middot; MCP plane</span></p></div>
+      <span class="script">tool_recon.py</span>
+    </div>
+    <div class="flow">
+      <div class="fnode red"><p class="t">gen-recon</p><p class="s">18 off-policy tools</p></div>
+      <div class="farrow"><span class="lbl">tools/call</span><span class="ln">&rarr;</span></div>
+      <div class="fnode"><p class="t">Gateway</p><p class="s">deny &minus;32003 &times;18</p></div>
+      <div class="farrow"><span class="lbl">telemetry</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">Bridge</p><p class="s">tool_enumeration</p></div>
+      <div class="farrow act"><span class="lbl">revoke</span><span class="ln">&rarr;</span></div>
+      <div class="fnode red"><p class="t">key revoked</p><p class="s">&rarr; 401</p></div>
+    </div>
+    <div class="meta">
+      <span class="k">session</span><span class="v mono">per-run &middot; minted fresh (see Session Timeline)</span>
+      <span class="k">trigger</span><span class="v">&ge; 6 distinct off-profile tools from one key &rarr; revoke (auto)</span>
+      <span class="k">finding</span><span class="v find">The profile allow-list holds &mdash; <b>enumeration is caught at the 6th distinct tool</b>, before the attacker maps the surface.</span>
+    </div>
+  </div>
+
+  <!-- ATTACK 2 -->
+  <div class="atk">
+    <div class="atk-head">
+      <div class="num red">2</div>
+      <div><p class="atk-title">Compromised agent<span class="det">detector: compromised_agent &middot; MCP plane</span></p></div>
+      <span class="script">live_attack.py</span>
+    </div>
+    <div class="flow">
+      <div class="fnode red"><p class="t">live-attacker</p><p class="s">off-policy, 1/sec</p></div>
+      <div class="farrow"><span class="lbl">tools/call</span><span class="ln">&rarr;</span></div>
+      <div class="fnode"><p class="t">Gateway</p><p class="s">deny &minus;32003</p></div>
+      <div class="farrow"><span class="lbl">at &ge;3</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">Bridge</p><p class="s">compromised_agent</p></div>
+      <div class="farrow act"><span class="lbl">revoke</span><span class="ln">&rarr;</span></div>
+      <div class="fnode red"><p class="t">key revoked</p><p class="s">&rarr; 401</p></div>
+    </div>
+    <div class="meta">
+      <span class="k">session</span><span class="v mono">u7jv7DEvqwyg3UtwhawS-rSelVdevCofa7K2brHthno</span>
+      <span class="k">trigger</span><span class="v">&ge; 3 off-profile denials from one key &rarr; revoke (auto)</span>
+      <span class="k">finding</span><span class="v find">Cut off at the <b>3rd denial, mid-recon</b> &mdash; no wait for the full sweep. Denials are <b>HTTP 200 with error_code &minus;32003</b> (the envelope quirk, G3).</span>
+    </div>
+  </div>
+
+  <!-- ATTACK 3 -->
+  <div class="atk">
+    <div class="atk-head">
+      <div class="num red">3</div>
+      <div><p class="atk-title">LLM cost abuse<span class="det">detector: llm_abuse &middot; LLM plane</span></p></div>
+      <span class="script">llm_attack.py</span>
+    </div>
+    <div class="flow">
+      <div class="fnode red"><p class="t">llm-abuser</p><p class="s">max_tokens 1000</p></div>
+      <div class="farrow"><span class="lbl">/v1/messages</span><span class="ln">&rarr;</span></div>
+      <div class="fnode"><p class="t">Gateway</p><p class="s">deny 400 &middot; $0 spent</p></div>
+      <div class="farrow"><span class="lbl">at &ge;5</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">Bridge</p><p class="s">llm_abuse</p></div>
+      <div class="farrow act"><span class="lbl">revoke</span><span class="ln">&rarr;</span></div>
+      <div class="fnode red"><p class="t">key revoked</p><p class="s">&rarr; 401</p></div>
+    </div>
+    <div class="meta">
+      <span class="k">session</span><span class="v mono">&mdash; (LLM plane; calls carry no MCP session)</span>
+      <span class="k">trigger</span><span class="v">&ge; 5 governance denials (max_tokens cap) from one key &rarr; revoke (auto)</span>
+      <span class="k">finding</span><span class="v find">Cost governance bites <b>before the request is forwarded</b> &mdash; upstream host blank, tokens 0, <b>$0 spent</b> &mdash; yet fully logged (LLM Logs populated).</span>
+    </div>
+  </div>
+
+  <!-- ATTACK 4 -->
+  <div class="atk">
+    <div class="atk-head">
+      <div class="num red">4</div>
+      <div><p class="atk-title">Prompt injection<span class="det">detector: prompt_injection &middot; MCP plane</span></p></div>
+      <span class="script">inject_attack.py</span>
+    </div>
+    <div class="flow">
+      <div class="fnode red"><p class="t">injector</p><p class="s">hostile payload</p></div>
+      <div class="farrow"><span class="lbl">echo (allowed)</span><span class="ln">&rarr;</span></div>
+      <div class="fnode green"><p class="t">Gateway</p><p class="s">ALLOW 200</p></div>
+      <div class="farrow"><span class="lbl">body capture</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">Bridge</p><p class="s">prompt_injection</p></div>
+      <div class="farrow act"><span class="lbl">revoke</span><span class="ln">&rarr;</span></div>
+      <div class="fnode red"><p class="t">key revoked</p><p class="s">&rarr; 401</p></div>
+    </div>
+    <div class="meta">
+      <span class="k">session</span><span class="v mono">VN95D3SZ_lX8lPXbbdfba99lD0wgiluF0V0u--wLzKU</span>
+      <span class="k">trigger</span><span class="v">hostile payload in a captured body on an allowed tool &rarr; revoke (auto)</span>
+      <span class="k">finding</span><span class="v find"><b>Payload blindness:</b> the gateway allows it &mdash; it enforces <i>which</i> tool, not <i>what&rsquo;s inside</i>. Response is a <b>revoke</b> (not a throttle: MCP has no per-key rate limit).</span>
+    </div>
+  </div>
+
+  <!-- ATTACK 5 -->
+  <div class="atk">
+    <div class="atk-head">
+      <div class="num amber">5</div>
+      <div><p class="atk-title">Credential brute force<span class="det">detector: brute_force (info) &middot; auth layer</span></p></div>
+      <span class="script">brute_attack.py</span>
+    </div>
+    <div class="flow">
+      <div class="fnode red"><p class="t">bad-key spray</p><p class="s">14 invalid keys</p></div>
+      <div class="farrow"><span class="lbl">auth</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">Gateway</p><p class="s">lockout 429 @10</p></div>
+      <div class="farrow"><span class="lbl">recorded, no tenant</span><span class="ln">&rarr;</span></div>
+      <div class="fnode gray"><p class="t">Bridge</p><p class="s">brute_force (info)</p></div>
+      <div class="farrow"><span class="lbl">no action</span><span class="ln">&rarr;</span></div>
+      <div class="fnode amber"><p class="t">console-blind</p><p class="s">SIEM catches it</p></div>
+    </div>
+    <div class="meta">
+      <span class="k">session</span><span class="v mono">&mdash; (rejected at auth, before a session exists)</span>
+      <span class="k">trigger</span><span class="v">&ge; 10 auth failures / IP &rarr; gateway lockout (5 min). Bridge logs it; takes no action (gateway self-defends).</span>
+      <span class="k">finding</span><span class="v find"><b>The headline.</b> Auth failures are recorded but carry <b>no tenant</b>, and every console view is tenant-scoped &mdash; so brute force is <b>invisible in the console</b>. Ship the raw stdout to a SIEM.</span>
+    </div>
+  </div>
+
+  <p class="foot"><b>Coverage:</b> three planes (MCP tools, MCP profile, LLM) and all five bridge detectors. Attacks 1&ndash;4 end in an autonomous revoke; Attack 5 is handled by the gateway&rsquo;s own lockout. The findings &mdash; payload blindness, the 200-with-error envelope, and the console&rsquo;s blindness to auth abuse &mdash; came out of cross-checking the gateway, the bridge, and the console against each other.</p>
+</div>

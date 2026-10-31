@@ -1,0 +1,175 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Containment Walkthrough</title>
+<style>
+/* Layout: a numbered top-to-bottom sequence of the live attack being contained, Tuskira dark palette. */
+:root{
+  --bg:#0a1529; --bg2:#0c1a33;
+  --panel:#112644; --line:#20396a; --sub:#0c1d38; --sub-line:#1f3a60;
+  --fg:#e9f1fb; --muted:#90a4c4;
+  --blue:#5aa0e0; --amber:#e3ad5a; --red:#e07a5c; --green:#6fcb9b;
+  --sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--fg);font-family:var(--sans);
+  background:
+    radial-gradient(1000px 440px at 50% -8%, #13294c 0%, transparent 62%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+}
+.wrap{
+  max-width:860px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:30px 44px;
+}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:0 0 11px}
+h1{font-size:clamp(21px,3.4vw,30px);font-weight:700;margin:0 0 8px;text-wrap:balance;letter-spacing:-.012em}
+.sub{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 30px;max-width:66ch}
+
+.timeline{display:flex;flex-direction:column}
+.step{--ac:var(--blue);display:grid;grid-template-columns:48px 1fr;column-gap:18px;position:relative}
+.step.attack{--ac:var(--red)} .step.act{--ac:var(--amber)} .step.result{--ac:var(--red)}
+.marker{position:relative}
+.marker::before{content:"";position:absolute;left:23px;top:0;bottom:0;width:2px;background:var(--line)}
+.step:first-child .marker::before{top:23px}
+.step:last-child .marker::before{bottom:calc(100% - 23px)}
+.num{position:relative;z-index:1;width:46px;height:46px;border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  background:#0e1f3a;border:2px solid var(--ac);
+  font-family:var(--mono);font-size:16px;font-weight:700;color:var(--ac)}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;
+  padding:16px 18px;margin-bottom:18px;min-width:0}
+.chip{display:inline-block;font:600 11px/1 var(--mono);letter-spacing:.09em;text-transform:uppercase;
+  padding:5px 9px;border-radius:7px;margin-bottom:10px;
+  color:var(--ac);background:color-mix(in srgb,var(--ac) 15%,transparent);
+  border:1px solid color-mix(in srgb,var(--ac) 38%,transparent)}
+.card h2{font-size:17px;font-weight:700;margin:0 0 6px;letter-spacing:-.01em}
+.card p{color:#c2d1e8;font-size:13.5px;line-height:1.55;margin:0}
+.detail{margin-top:13px;background:var(--sub);border:1px solid var(--sub-line);border-radius:10px;
+  padding:11px 13px;font-family:var(--mono);font-size:12.5px;line-height:1.45;
+  display:grid;grid-template-columns:auto 1fr;gap:5px 16px}
+.detail .k{color:var(--muted);white-space:nowrap}
+.detail .v{color:#dbe6f5;overflow-wrap:anywhere}
+.detail .v.ac{color:var(--ac)}
+.detail .v.ok{color:var(--green)}
+
+.run{margin-top:26px;background:var(--sub);border:1px solid var(--sub-line);border-radius:14px;padding:16px 18px}
+.run .chip{color:var(--amber);background:color-mix(in srgb,var(--amber) 15%,transparent);border-color:color-mix(in srgb,var(--amber) 38%,transparent)}
+.run pre{margin:10px 0 0;font-family:var(--mono);font-size:12.5px;color:#dbe6f5;white-space:pre-wrap;overflow-wrap:anywhere;line-height:1.6}
+.run .cmd{color:var(--green)}
+.run .cm{color:var(--muted)}
+.foot{color:var(--muted);font-size:12.5px;margin-top:18px;line-height:1.55}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Tuskira assessment &middot; live attack walkthrough</p>
+  <h1>Off-policy agent &rarr; autonomous containment</h1>
+  <p class="sub">A validly-authenticated agent reaches for tools its profile forbids. Here is exactly what happens, step by step, until its key is revoked and it&rsquo;s cut off &mdash; no human in the path.</p>
+
+  <div class="timeline">
+
+    <!-- Step 0: the attack -->
+    <div class="step attack">
+      <div class="marker"><div class="num">0</div></div>
+      <div class="card">
+        <span class="chip">Attacker &middot; the attack</span>
+        <h2>A compromised agent probes off-policy tools</h2>
+        <p>A <b style="color:#f0d6cd">valid</b> agent API key presents the <span class="v ac" style="font-family:var(--mono)">Echo Only</span> profile, then calls an off-policy tool once per second. Credentials are real; the behaviour isn&rsquo;t &mdash; exactly what a hijacked agent looks like.</p>
+        <div class="detail">
+          <span class="k">script</span><span class="v ac">live_attack.py</span>
+          <span class="k">profile</span><span class="v">Echo Only &nbsp;(allows: echo, get-sum)</span>
+          <span class="k">tool</span><span class="v">everything__list-secrets &nbsp;&larr; off-policy</span>
+          <span class="k">cadence</span><span class="v">1 call / second</span>
+          <span class="k">session</span><span class="v">etNB-HFGTySNwi16mg3okEptYD0dJkkj9zeYrBKlnwA</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 1: gateway denies + logs -->
+    <div class="step">
+      <div class="marker"><div class="num">1</div></div>
+      <div class="card">
+        <span class="chip">Gateway &middot; enforce + log</span>
+        <h2>Each off-policy call is denied and logged</h2>
+        <p>The key authenticates fine, but <span class="v" style="font-family:var(--mono);color:#dbe6f5">list-secrets</span> isn&rsquo;t in the Echo Only allow-list, so the gateway denies the call and records it. <b>The call never reaches the <span style="font-family:var(--mono);font-weight:600">everything</span> MCP server.</b></p>
+        <div class="detail">
+          <span class="k">authz</span><span class="v">tool not in profile &rarr; <span class="ac">&minus;32003</span> (HTTP 200 envelope)</span>
+          <span class="k">sink</span><span class="v">access log &rarr; stdout feed + ClickHouse</span>
+          <span class="k">reach</span><span class="v">blocked before the MCP connector</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 2: bridge detects -->
+    <div class="step">
+      <div class="marker"><div class="num">2</div></div>
+      <div class="card">
+        <span class="chip">Bridge &middot; detect</span>
+        <h2>The bridge counts off-policy denials per key</h2>
+        <p>Tailing the telemetry over a rolling window, the bridge flags <span style="font-family:var(--mono);font-weight:600">compromised_agent</span> once one key crosses 3 off-policy denials. In the live run it logged at the 5th&ndash;6th &mdash; the threshold is 3, but the feed arrives in batches, so it fires on the batch that crosses it.</p>
+        <div class="detail">
+          <span class="k">detector</span><span class="v ac">compromised_agent</span>
+          <span class="k">trigger</span><span class="v">&ge; 3 off-profile denials from one key</span>
+          <span class="k">window</span><span class="v">rolling &middot; per-principal</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 3: AiSOC investigates -->
+    <div class="step">
+      <div class="marker"><div class="num">3</div></div>
+      <div class="card">
+        <span class="chip">AiSOC &middot; investigate</span>
+        <h2>AiSOC investigates and recommends</h2>
+        <p>The bridge hands the incident to AiSOC, which runs its four-agent pipeline and returns an analysis plus a recommendation. <b>AiSOC never touches the gateway itself</b> &mdash; it produces the finding and the recommended action.</p>
+        <div class="detail">
+          <span class="k">pipeline</span><span class="v">DETECT &rarr; TRIAGE &rarr; HUNT &rarr; RESPOND</span>
+          <span class="k">confidence</span><span class="v">83/100 &middot; MITRE T1069 / T1078</span>
+          <span class="k">recommend</span><span class="v ac">revoke_key</span>
+          <span class="k">note</span><span class="v">AiSOC default: await human approval</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 4: bridge executes -->
+    <div class="step act">
+      <div class="marker"><div class="num">4</div></div>
+      <div class="card">
+        <span class="chip">Bridge &middot; respond</span>
+        <h2>The bridge executes the revoke</h2>
+        <p>Under its own policy gate, the bridge auto-executes the action against the gateway&rsquo;s control-plane API &mdash; overriding AiSOC&rsquo;s &ldquo;await approval&rdquo; default because this one is single-identity and reversible.</p>
+        <div class="detail">
+          <span class="k">action</span><span class="v"><span class="ac">DELETE /api-keys/{id}</span> &rarr; <span class="ok">204 No Content</span></span>
+          <span class="k">gate</span><span class="v">AUTO_TIERS = low &nbsp;(auto-execute)</span>
+          <span class="k">scope</span><span class="v">single identity &middot; reversible &middot; low blast radius</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Step 5: cut off -->
+    <div class="step result">
+      <div class="marker"><div class="num">5</div></div>
+      <div class="card">
+        <span class="chip">Gateway &middot; key store</span>
+        <h2>Key revoked &rarr; the agent is cut off</h2>
+        <p>The key now carries a <span style="font-family:var(--mono)">revoked_at</span> timestamp, propagated instantly across the gateway. The agent&rsquo;s very next call no longer fails at authorization &mdash; it fails at <b>authentication</b>.</p>
+        <div class="detail">
+          <span class="k">state</span><span class="v ac">key &rarr; REVOKED (revoked_at set)</span>
+          <span class="k">next call</span><span class="v">tools/call &rarr; <span class="ac">401 Unauthorized</span></span>
+          <span class="k">result</span><span class="v">agent cut off &middot; loop closed</span>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="run">
+    <span class="chip">Run it live</span>
+    <pre><span class="cm"># terminal 2 — the bridge is running live in terminal 1</span>
+<span class="cmd">python3 live_attack.py</span>
+<span class="cm"># env: GATEWAY_ADMIN_KEY · GATEWAY_API=…:28081 · GATEWAY_MCP=…:28080</span></pre>
+    <p class="foot">Watch the bridge terminal fire <span style="font-family:var(--mono);color:#cdd9ec">compromised_agent &rarr; revoke_key &rarr; HTTP 204</span>, and the attacker&rsquo;s calls flip from <span style="font-family:var(--mono);color:#cdd9ec">&minus;32003</span> to <span style="font-family:var(--mono);color:#cdd9ec">401</span> within a few seconds.</p>
+  </div>
+</div>

@@ -1,0 +1,12 @@
+# telemetry + generated scenarios (produced at run time)
+gateway-events.jsonl
+scenario*.json
+bench/
+
+# python
+__pycache__/
+*.pyc
+
+# editor / os
+.DS_Store
+*.swp

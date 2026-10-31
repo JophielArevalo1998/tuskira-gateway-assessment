@@ -1,0 +1,125 @@
+<meta name="claude:viewport-fit-sides" content="cover">
+<title>Containment at a Glance</title>
+<style>
+/* Layout: a single simple left-to-right flow, color-coded by who owns each piece (tool vs built-here). */
+:root{
+  --bg:#0a1529; --bg2:#0c1a33;
+  --panel:#112644; --line:#20396a;
+  --fg:#e9f1fb; --muted:#90a4c4;
+  --blue:#5aa0e0; --amber:#e3ad5a; --red:#e07a5c; --green:#5ec6a0;
+  --sans:'Hanken Grotesk',system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'JetBrains Mono',ui-monospace,'SFMono-Regular',Menlo,monospace;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;color:var(--fg);font-family:var(--sans);
+  background:
+    radial-gradient(1000px 420px at 50% -10%, #13294c 0%, transparent 60%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+}
+.wrap{
+  max-width:1000px;margin:0 auto;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:32px 46px;
+}
+.eyebrow{font:600 12px/1 var(--mono);letter-spacing:.2em;text-transform:uppercase;color:var(--amber);margin:0 0 11px}
+h1{font-size:clamp(21px,3.4vw,30px);font-weight:700;margin:0 0 8px;text-wrap:balance;letter-spacing:-.012em}
+.sub{color:var(--muted);font-size:15px;line-height:1.5;margin:0 0 34px;max-width:64ch}
+
+.flow{display:flex;align-items:stretch;justify-content:center;flex-wrap:nowrap;gap:0}
+.node{--ac:var(--blue);flex:1 1 0;min-width:0;
+  background:var(--panel);border:1px solid var(--line);border-top:3px solid var(--ac);
+  border-radius:12px;padding:15px 14px 16px;text-align:center}
+.node.red{--ac:var(--red)} .node.amber{--ac:var(--amber)} .node.green{--ac:var(--green)}
+.node .n{width:26px;height:26px;border-radius:50%;margin:0 auto 9px;
+  display:flex;align-items:center;justify-content:center;
+  background:color-mix(in srgb,var(--ac) 18%,transparent);border:1.5px solid var(--ac);
+  font:700 13px/1 var(--mono);color:var(--ac)}
+.node .who{font-weight:700;font-size:14px;margin:0 0 3px}
+.node .act{font-family:var(--mono);font-size:11.5px;color:#c3d2e8;line-height:1.35;margin:0}
+.node .own{font-size:10px;color:var(--muted);margin:8px 0 0;text-transform:uppercase;letter-spacing:.06em}
+
+.arrow{flex:0 0 34px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;padding-top:30px}
+.arrow .lbl{font-family:var(--mono);font-size:9.5px;color:var(--muted);white-space:nowrap}
+.arrow .ln{color:#4f78ad;font-size:19px;line-height:1}
+.arrow.act .ln{color:var(--amber)} .arrow.act .lbl{color:var(--amber)}
+
+@media(max-width:680px){
+  .flow{flex-direction:column;align-items:stretch}
+  .node{flex:none}
+  .arrow{flex:none;flex-direction:row;align-items:center;justify-content:center;gap:9px;height:auto;padding:9px 0;transform:none}
+  .arrow .ln{display:inline-block;transform:rotate(90deg)}
+}
+
+.legend{display:flex;flex-wrap:wrap;gap:12px 24px;margin:32px 0 0;padding:16px 18px;
+  background:#0e2140;border:1px solid var(--line);border-radius:12px;list-style:none}
+.legend li{display:flex;align-items:flex-start;gap:10px;font-size:12.5px;color:#c3d2e8}
+.legend .dot{flex:0 0 auto;width:12px;height:12px;border-radius:3px;margin-top:2px}
+.legend b{color:var(--fg);font-weight:600}
+.legend .d-red{background:var(--red)} .legend .d-blue{background:var(--blue)}
+.legend .d-amber{background:var(--amber)} .legend .d-green{background:var(--green)}
+.note{color:var(--muted);font-size:12.5px;line-height:1.55;margin:16px 0 0}
+.note b{color:var(--amber);font-weight:600}
+</style>
+
+<div class="wrap">
+  <p class="eyebrow">Tuskira assessment &middot; the loop, simply</p>
+  <h1>How one off-policy agent gets cut off</h1>
+  <p class="sub">The same loop, stripped to five steps &mdash; and colored by who owns each piece: the tool under test, the open-source engine, and the glue we built.</p>
+
+  <div class="flow">
+    <div class="node red">
+      <div class="n">1</div>
+      <p class="who">Compromised agent</p>
+      <p class="act">off-policy call</p>
+      <p class="own">test script</p>
+    </div>
+
+    <div class="arrow"><span class="lbl">call</span><span class="ln">&rarr;</span></div>
+
+    <div class="node">
+      <div class="n">2</div>
+      <p class="who">Gateway</p>
+      <p class="act">deny &minus;32003<br>+ log</p>
+      <p class="own">Tuskira</p>
+    </div>
+
+    <div class="arrow"><span class="lbl">telemetry</span><span class="ln">&rarr;</span></div>
+
+    <div class="node amber">
+      <div class="n">3</div>
+      <p class="who">Bridge</p>
+      <p class="act">detect<br>&ge; 3 denials</p>
+      <p class="own">built here</p>
+    </div>
+
+    <div class="arrow"><span class="lbl">incident</span><span class="ln">&rarr;</span></div>
+
+    <div class="node green">
+      <div class="n">4</div>
+      <p class="who">AiSOC</p>
+      <p class="act">investigate<br>&rarr; recommend</p>
+      <p class="own">open source</p>
+    </div>
+
+    <div class="arrow act"><span class="lbl">bridge revokes</span><span class="ln">&rarr;</span></div>
+
+    <div class="node">
+      <div class="n">5</div>
+      <p class="who">Gateway</p>
+      <p class="act">key revoked<br>&rarr; 401</p>
+      <p class="own">Tuskira</p>
+    </div>
+  </div>
+
+  <ul class="legend">
+    <li><span class="dot d-red"></span><span><b>The attacker</b> &mdash; our test script (<span style="font-family:var(--mono)">live_attack.py</span>)</span></li>
+    <li><span class="dot d-blue"></span><span><b>Tuskira AI Agent Gateway</b> &mdash; the tool under assessment</span></li>
+    <li><span class="dot d-amber"></span><span><b>The bridge</b> &mdash; glue we built for this test (not part of either tool)</span></li>
+    <li><span class="dot d-green"></span><span><b>AiSOC</b> &mdash; open-source SOC engine</span></li>
+  </ul>
+
+  <p class="note">The gateway <b>denies, logs, and exposes a revoke API</b> &mdash; but it never detects patterns or responds on its own. AiSOC <b>investigates and recommends</b>, but touches nothing. The <b>bridge</b> is what ties them into a closed loop: it watches, decides, and executes. In a real SOC that role is a SOAR platform.</p>
+</div>
